@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Outlet Map</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <style>
+        #map {
+            height: 800px;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="map"></div>
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script>
+        var map = L.map('map').setView([4.2105, 101.9758], 6); // Set initial view to Malaysia Map
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 18,
+        }).addTo(map);
+
+        fetch('http://127.0.0.1:5000/api/outlets')
+            .then(response => response.json())
+            .then(data => {
+                data.forEach(outlet => {
+                    // Check if the numerical indices exist
+                    if (outlet['Outlet Name'] && outlet['Outlet Address']) {
+                        // Create a marker for each outlet
+                        var marker = L.marker([outlet.latitude, outlet.longitude]).addTo(map)
+                            .bindPopup(`<b>${outlet['Outlet Name']}</b><br>${outlet['Outlet Address']}`)
+                            .openPopup();
+
+                        // Draw catchment area
+                        var circle = L.circle([outlet.latitude, outlet.longitude], {
+                            color: 'blue',
+                            fillColor: 'blue',
+                            fillOpacity: 0.1,
+                            radius: 5000 // 5 km in meters
+                        }).addTo(map);
+
+                        // Highlight intersecting outlets
+                        data.forEach(otherOutlet => {
+                            if (outlet.id !== otherOutlet.id) {
+                                var otherMarker = L.marker([otherOutlet.latitude, otherOutlet.longitude]);
+                                var polygon = L.polygon([
+                                    [outlet.latitude, outlet.longitude],
+                                    [otherOutlet.latitude, otherOutlet.longitude]
+                                ]);
+                                if (polygon.getBounds().contains(otherMarker.getLatLng())) {
+                                    circle.setStyle({ fillColor: 'red' });
+                                }
+                            }
+                        });
+                    } else {
+                        console.error('Outlet data is missing or incomplete:', outlet);
+                    }
+                });
+
+            });
+    </script>
+</body>
+
+</html>
